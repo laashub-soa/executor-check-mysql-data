@@ -112,6 +112,12 @@ def running_position_record(s_d, s_t, t_d, t_t):
                 f.write(running_id + "\n")
 
 
+def diff_source_target_data_count_too_many(s_d, s_t, t_d, t_t, diff_count):
+    file_path = os.path.join("diff_source_target_data_count_too_many.txt")
+    with open(file_path, "a")as f:
+        f.write("%s.%s:%s.%s:%s\n" % (s_d, s_t, t_d, t_t, diff_count))
+
+
 def execute_select_sql():
     for index in range(len(select_sql_list) - 1):
         item = select_sql_list[index]
@@ -134,14 +140,16 @@ def execute_select_sql():
         target_select_result = target_select_result[0]["total_count"]
         # print(target_select_result)
 
-        if int(source_select_result) - int(target_select_result) > application["maximum_tolerance_count"]:
+        diff_source_target_data_count = int(source_select_result) - int(target_select_result)
+        if diff_source_target_data_count > application["maximum_tolerance_count"]:
+            diff_source_target_data_count_too_many(s_d, s_t, t_d, t_t, diff_source_target_data_count)
             # TODO 告警提示两边表数据相差过大
             alarm_msg = """
-            两边表(%s.%s)数据相差过大
+            两边表(%s.%s)数据相差过大(%s)
             如何检查?
             源端执行: %s
             目标端执行: %s
-            """ % (t_d, t_t, source_select_sql, target_select_sql)
+            """ % (t_d, t_t, diff_source_target_data_count, source_select_sql, target_select_sql)
             print_to_file(alarm_msg)
         running_position_record(s_d, s_t, t_d, t_t)
         time.sleep(1)
