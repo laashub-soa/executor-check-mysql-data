@@ -13,8 +13,9 @@ total_table_count = 0
 select_sql_list = []
 now_time_second = int(time.time())
 
-with open("running_position_record.txt", "w", encoding="utf-8")as f:
-    f.write("")
+if not os.path.exists("running_position_record.txt"):
+    with open("running_position_record.txt", "w", encoding="utf-8")as f:
+        f.write("")
 
 
 def load_config():
@@ -99,7 +100,7 @@ def running_position_is_can_skip(s_d, s_t, t_d, t_t):
     running_id = "%s_%s_%s_%s" % (s_d, s_t, t_d, t_t)
     with open("running_position_record.txt", "r", encoding="utf-8")as f:
         running_position_record_fc = f.readlines()
-    return running_id in running_position_record_fc
+    return running_id + "\n" in running_position_record_fc
 
 
 def running_position_record(s_d, s_t, t_d, t_t):
@@ -121,6 +122,7 @@ def execute_select_sql():
         t_d = item["t_d"]
         t_t = item["t_t"]
         if running_position_is_can_skip(s_d, s_t, t_d, t_t):
+            print_to_file("跳过")
             continue
         print_to_file("执行进度: " + str(index / len(select_sql_list)) + "%" + "(%s.%s)" % (t_d, t_t))
         # source
