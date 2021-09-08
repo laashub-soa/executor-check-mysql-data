@@ -1,0 +1,15 @@
+table_distribute_bind:
+  wms:
+    - wms_1
+    - wms_2
+    - wms_3
+    - wms_4
+    - wms_5
+    - wms_6
+    - wms_7
+    - wms_8
+    - wms_9
+maximum_tolerance_count: 100
+table_mapping:
+  "wms+wms_1+wms_2+wms_3+wms_4+wms_5+wms_6+wms_7+wms_8+wms_9": "wms_all"
+
