@@ -132,3 +132,4 @@ configs/application.yaml
 temp
 test/db.yaml
 test/prints
+test/running_position_record.txt

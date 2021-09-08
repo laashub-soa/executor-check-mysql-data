@@ -96,19 +96,19 @@ def gen_select_sql():
 
 
 def running_position_is_can_skip(s_d, s_t, t_d, t_t):
-    running_id = "%s-%s-%s-%s" % (s_d, s_t, t_d, t_t)
+    running_id = "%s_%s_%s_%s" % (s_d, s_t, t_d, t_t)
     with open("running_position_record.txt", "r", encoding="utf-8")as f:
         running_position_record_fc = f.readlines()
     return running_id in running_position_record_fc
 
 
 def running_position_record(s_d, s_t, t_d, t_t):
-    running_id = "%s-%s-%s-%s" % (s_d, s_t, t_d, t_t)
+    running_id = "%s_%s_%s_%s" % (s_d, s_t, t_d, t_t)
     with open("running_position_record.txt", "r", encoding="utf-8")as f:
         running_position_record_fc = f.readlines()
         if running_id not in running_position_record_fc:
             with open("running_position_record.txt", "a", encoding="utf-8")as f:
-                f.writelines([running_id])
+                f.write(running_id + "\n")
 
 
 def execute_select_sql():
