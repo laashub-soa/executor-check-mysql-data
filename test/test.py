@@ -130,7 +130,7 @@ def execute_select_sql():
         if running_position_is_can_skip(s_d, s_t, t_d, t_t):
             print_to_file("跳过")
             continue
-        print_to_file("执行进度: " + str(index / len(select_sql_list)) + "%" + "(%s.%s)" % (t_d, t_t))
+        print_to_file("执行进度: " + str(int((index / len(select_sql_list))*100)) + "%" + "(%s.%s)" % (t_d, t_t))
         # source
         source_select_result = mymysql.query(db_config["source"], source_select_sql)
         source_select_result = source_select_result[0]["total_count"]
