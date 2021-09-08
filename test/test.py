@@ -1,3 +1,4 @@
+import os
 import time
 
 import yaml
@@ -10,6 +11,10 @@ db_config = None
 table_defines = []  # {"s_d": "","s_t": "","t_d": "","t_t": ""}
 total_table_count = 0
 select_sql_list = []
+now_time_second = int(time.time())
+
+with open("running_position_record.txt", "w", encoding="utf-8")as f:
+    f.write("")
 
 
 def load_config():
@@ -90,14 +95,34 @@ def gen_select_sql():
         })
 
 
+def running_position_is_can_skip(s_d, s_t, t_d, t_t):
+    running_id = "%s-%s-%s-%s" % (s_d, s_t, t_d, t_t)
+    with open("running_position_record.txt", "r", encoding="utf-8")as f:
+        running_position_record_fc = f.readlines()
+    return running_id in running_position_record_fc
+
+
+def running_position_record(s_d, s_t, t_d, t_t):
+    running_id = "%s-%s-%s-%s" % (s_d, s_t, t_d, t_t)
+    with open("running_position_record.txt", "r", encoding="utf-8")as f:
+        running_position_record_fc = f.readlines()
+        if running_id not in running_position_record_fc:
+            with open("running_position_record.txt", "a", encoding="utf-8")as f:
+                f.writelines([running_id])
+
+
 def execute_select_sql():
-    for index in range(len(select_sql_list)):
+    for index in range(len(select_sql_list) - 1):
         item = select_sql_list[index]
-        print("执行进度" + str(int(index / len(select_sql_list))) + "%")
         source_select_sql = item["source_select_sql"]
         target_select_sql = item["target_select_sql"]
+        s_d = item["s_d"]
+        s_t = item["s_t"]
         t_d = item["t_d"]
         t_t = item["t_t"]
+        if running_position_is_can_skip(s_d, s_t, t_d, t_t):
+            continue
+        print_to_file("执行进度: " + str(index / len(select_sql_list)) + "%" + "(%s.%s)" % (t_d, t_t))
         # source
         source_select_result = mymysql.query(db_config["source"], source_select_sql)
         source_select_result = source_select_result[0]["total_count"]
@@ -115,8 +140,24 @@ def execute_select_sql():
             源端执行: %s
             目标端执行: %s
             """ % (t_d, t_t, source_select_sql, target_select_sql)
-            print(alarm_msg)
+            print_to_file(alarm_msg)
+        running_position_record(s_d, s_t, t_d, t_t)
         time.sleep(1)
+    print_to_file("检查完成")
+
+
+def print_to_file(msg_str):
+    print(msg_str)
+    msg_str += "\n"
+    global now_time_second
+    if not os.path.exists("prints"):
+        os.mkdir("prints")
+    print_file_path = os.path.join("prints", "print-%s.txt" % now_time_second)
+    if not os.path.exists(print_file_path):
+        with open(print_file_path, "w")as f:
+            f.write("")
+    with open(print_file_path, "a", encoding="utf-8")as f:
+        f.write(str(msg_str))
 
 
 if __name__ == '__main__':
@@ -125,4 +166,5 @@ if __name__ == '__main__':
     # print(table_defines)
     # print(total_table_count)
     gen_select_sql()
+    print_to_file(select_sql_list)
     execute_select_sql()

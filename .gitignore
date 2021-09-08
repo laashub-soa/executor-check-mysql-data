@@ -131,3 +131,4 @@ configs/application.yaml
 .idea
 temp
 test/db.yaml
+test/prints
