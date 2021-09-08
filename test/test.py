@@ -1,27 +1,36 @@
+import time
+
 import yaml
+
+from component import mymysql
 
 table_define_fc = None
 application = None
-table_define = []  # {"s_d": "","s_t": "","t_d": "","t_t": ""}
+db_config = None
+table_defines = []  # {"s_d": "","s_t": "","t_d": "","t_t": ""}
 total_table_count = 0
+select_sql_list = []
 
 
 def load_config():
     global table_define_fc
     global application
+    global db_config
     with open("table_define.txt", "r", encoding="utf-8")as f:
         table_define_fc = f.readlines()
     with open("application.yaml", "r", encoding="utf-8")as f:
         application = yaml.safe_load(f.read())
+    with open("db.yaml", "r", encoding="utf-8")as f:
+        db_config = yaml.safe_load(f.read())
 
 
 def gen_table_define():
     def append_table_define(s_d, s_t, t_d, t_t):
         global total_table_count
-        table_define.append({"s_d": s_d, "s_t": s_t, "t_d": t_d, "t_t": t_t})
+        table_defines.append({"s_d": s_d, "s_t": s_t, "t_d": t_d, "t_t": t_t})
         total_table_count += 1
         if t_d in application["db_mapping"]:
-            table_define.append({"s_d": s_d, "s_t": s_t, "t_d": application["db_mapping"][t_d], "t_t": t_t})
+            table_defines.append({"s_d": s_d, "s_t": s_t, "t_d": application["db_mapping"][t_d], "t_t": t_t})
             total_table_count += 1
 
     revert_table_distribute_merge = {}
@@ -50,12 +59,70 @@ def gen_table_define():
 
 
 def gen_select_sql():
-    pass
+    for item in table_defines:
+        s_d = item["s_d"]
+        s_t = item["s_t"]
+        t_d = item["t_d"]
+        t_t = item["t_t"]
+
+        def gen_select_sql_detail(db_name, table_name):
+            if "-" in db_name:
+                table_distribute_unpacks = application["table_distribute_merge"][db_name]
+                select_sql_detail = "select "
+                for table_distribute_unpack_item in table_distribute_unpacks:
+                    if select_sql_detail != "select":
+                        select_sql_detail += "+"
+                    select_sql_detail += "(select count(1)  from %s.%s)" % (table_distribute_unpack_item, table_name)
+                select_sql_detail += " as total_count "
+            else:
+                select_sql_detail = "select count(1) as total_count from %s.%s;" % (db_name, table_name)
+            return select_sql_detail
+
+        source_select_sql = gen_select_sql_detail(s_d, s_t)
+        target_select_sql = gen_select_sql_detail(t_d, t_t)
+        select_sql_list.append({
+            "source_select_sql": source_select_sql,
+            "target_select_sql": target_select_sql,
+            "s_d": s_d,
+            "s_t": s_t,
+            "t_d": t_d,
+            "t_t": t_t,
+        })
+
+
+def execute_select_sql():
+    for index in range(len(select_sql_list)):
+        item = select_sql_list[index]
+        print("执行进度" + str(int(index / len(select_sql_list))) + "%")
+        source_select_sql = item["source_select_sql"]
+        target_select_sql = item["target_select_sql"]
+        t_d = item["t_d"]
+        t_t = item["t_t"]
+        # source
+        source_select_result = mymysql.query(db_config["source"], source_select_sql)
+        source_select_result = source_select_result[0]["total_count"]
+        # print(source_select_result)
+        # target
+        target_select_result = mymysql.query(db_config["target"], target_select_sql)
+        target_select_result = target_select_result[0]["total_count"]
+        # print(target_select_result)
+
+        if int(source_select_result) - int(target_select_result) > application["maximum_tolerance_count"]:
+            # TODO 告警提示两边表数据相差过大
+            alarm_msg = """
+            两边表(%s.%s)数据相差过大
+            如何检查?
+            源端执行: %s
+            目标端执行: %s
+            """ % (t_d, t_t, source_select_sql, target_select_sql)
+            print(alarm_msg)
+        time.sleep(1)
 
 
 if __name__ == '__main__':
     load_config()
     gen_table_define()
-    print(table_define)
-    print(total_table_count)
+    # print(table_defines)
+    # print(total_table_count)
     gen_select_sql()
+    execute_select_sql()
