@@ -121,7 +121,7 @@ def diff_source_target_data_count_too_many(s_d, s_t, t_d, t_t, diff_count):
 
 
 def execute_select_sql():
-    for index in range(len(select_sql_list) - 1):
+    for index in range(0, len(select_sql_list)):
         item = select_sql_list[index]
         source_select_sql = item["source_select_sql"]
         target_select_sql = item["target_select_sql"]
