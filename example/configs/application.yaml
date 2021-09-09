@@ -1,0 +1,13 @@
+table_distribute_merge:
+  "m-wms":
+    - wms
+maximum_tolerance_count: 10
+db_mapping:
+  "m-wms": "wms_all"
+# #############################告警配置
+# 钉钉webhook配置
+dingding_webhook_access_token:
+  - 1
+# 关注的用户
+follow_of_user:
+  - 10086

@@ -13,8 +13,10 @@ total_table_count = 0
 select_sql_list = []
 now_time_second = int(time.time())
 
-if not os.path.exists("running_position_record.txt"):
-    with open("running_position_record.txt", "w", encoding="utf-8")as f:
+if not os.path.exists("temp"):
+    os.mkdir("temp")
+if not os.path.exists(os.path.join("temp", "running_position_record.txt")):
+    with open(os.path.join("temp", "running_position_record.txt"), "w", encoding="utf-8")as f:
         f.write("")
 
 
@@ -22,11 +24,11 @@ def load_config():
     global table_define_fc
     global application
     global db_config
-    with open("table_define.txt", "r", encoding="utf-8")as f:
+    with open(os.path.join("configs", "table_define.txt"), "r", encoding="utf-8")as f:
         table_define_fc = f.readlines()
-    with open("application.yaml", "r", encoding="utf-8")as f:
+    with open(os.path.join("configs", "application.yaml"), "r", encoding="utf-8")as f:
         application = yaml.safe_load(f.read())
-    with open("db.yaml", "r", encoding="utf-8")as f:
+    with open(os.path.join("configs", "db.yaml"), "r", encoding="utf-8")as f:
         db_config = yaml.safe_load(f.read())
 
 
@@ -98,22 +100,22 @@ def gen_select_sql():
 
 def running_position_is_can_skip(s_d, s_t, t_d, t_t):
     running_id = "%s_%s_%s_%s" % (s_d, s_t, t_d, t_t)
-    with open("running_position_record.txt", "r", encoding="utf-8")as f:
+    with open(os.path.join("temp", "running_position_record.txt"), "r", encoding="utf-8")as f:
         running_position_record_fc = f.readlines()
     return running_id + "\n" in running_position_record_fc
 
 
 def running_position_record(s_d, s_t, t_d, t_t):
     running_id = "%s_%s_%s_%s" % (s_d, s_t, t_d, t_t)
-    with open("running_position_record.txt", "r", encoding="utf-8")as f:
+    with open(os.path.join("temp", "running_position_record.txt"), "r", encoding="utf-8")as f:
         running_position_record_fc = f.readlines()
         if running_id not in running_position_record_fc:
-            with open("running_position_record.txt", "a", encoding="utf-8")as f:
+            with open(os.path.join("temp", "running_position_record.txt"), "a", encoding="utf-8")as f:
                 f.write(running_id + "\n")
 
 
 def diff_source_target_data_count_too_many(s_d, s_t, t_d, t_t, diff_count):
-    file_path = os.path.join("diff_source_target_data_count_too_many.txt")
+    file_path = os.path.join("temp", "diff_source_target_data_count_too_many.txt")
     with open(file_path, "a")as f:
         f.write("%s.%s:%s.%s:%s\n" % (s_d, s_t, t_d, t_t, diff_count))
 
@@ -130,7 +132,7 @@ def execute_select_sql():
         if running_position_is_can_skip(s_d, s_t, t_d, t_t):
             print_to_file("跳过")
             continue
-        print_to_file("执行进度: " + str(int((index / len(select_sql_list))*100)) + "%" + "(%s.%s)" % (t_d, t_t))
+        print_to_file("执行进度: " + str(int((index / len(select_sql_list)) * 100)) + "%" + "(%s.%s)" % (t_d, t_t))
         # source
         source_select_result = mymysql.query(db_config["source"], source_select_sql)
         source_select_result = source_select_result[0]["total_count"]
@@ -162,7 +164,11 @@ def print_to_file(msg_str):
     global now_time_second
     if not os.path.exists("prints"):
         os.mkdir("prints")
-    print_file_path = os.path.join("prints", "print-%s.txt" % now_time_second)
+
+    print_file_path = os.path.join("temp", "prints")
+    if not os.path.exists(print_file_path):
+        os.mkdir(print_file_path)
+    print_file_path = os.path.join(print_file_path, "print-%s.txt" % now_time_second)
     if not os.path.exists(print_file_path):
         with open(print_file_path, "w")as f:
             f.write("")
