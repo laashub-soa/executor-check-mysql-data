@@ -3,7 +3,7 @@ import time
 
 import yaml
 
-from component import mymysql
+from component import mymysql, dingding_webhook
 
 table_define_fc = None
 application = None
@@ -145,7 +145,6 @@ def execute_select_sql():
         diff_source_target_data_count = int(source_select_result) - int(target_select_result)
         if diff_source_target_data_count > application["maximum_tolerance_count"]:
             diff_source_target_data_count_too_many(s_d, s_t, t_d, t_t, diff_source_target_data_count)
-            # TODO 告警提示两边表数据相差过大
             alarm_msg = """
             两边表(%s.%s)数据相差过大(%s)
             如何检查?
@@ -153,6 +152,7 @@ def execute_select_sql():
             目标端执行: %s
             """ % (t_d, t_t, diff_source_target_data_count, source_select_sql, target_select_sql)
             print_to_file(alarm_msg)
+            do_alarm(alarm_msg)
         running_position_record(s_d, s_t, t_d, t_t)
         time.sleep(1)
     print_to_file("检查完成")
@@ -162,13 +162,12 @@ def print_to_file(msg_str):
     print(msg_str)
     msg_str += "\n"
     global now_time_second
-    if not os.path.exists("prints"):
-        os.mkdir("prints")
-
-    print_file_path = os.path.join("temp", "prints")
-    if not os.path.exists(print_file_path):
-        os.mkdir(print_file_path)
-    print_file_path = os.path.join(print_file_path, "print-%s.txt" % now_time_second)
+    temp_print_path = os.path.join("temp", "prints")
+    if not os.path.exists(temp_print_path):
+        os.mkdir(temp_print_path)
+    if not os.path.exists(temp_print_path):
+        os.mkdir(temp_print_path)
+    print_file_path = os.path.join(temp_print_path, "print-%s.txt" % now_time_second)
     if not os.path.exists(print_file_path):
         with open(print_file_path, "w")as f:
             f.write("")
@@ -176,7 +175,12 @@ def print_to_file(msg_str):
         f.write(str(msg_str))
 
 
-if __name__ == '__main__':
+def reset():
+    with open(os.path.join("temp", "running_position_record.txt"), "w", encoding="utf-8")as f:
+        f.write("")
+
+
+def service():
     load_config()
     gen_table_define()
     # print(table_defines)
@@ -184,3 +188,30 @@ if __name__ == '__main__':
     gen_select_sql()
     print_to_file(select_sql_list)
     execute_select_sql()
+    reset()
+
+
+def do_alarm(alarm_msg):
+    at_phones = application["follow_of_user"]
+    at_phones_str = "  "
+    for item in at_phones:
+        at_phones_str += "@" + str(item)
+    alarm_result = dingding_webhook.alarm(application["dingding_webhook_access_token"][0], "check",
+                                          alarm_msg + at_phones_str, at_phones)
+    return alarm_result
+
+
+if __name__ == '__main__':
+    while True:
+        try:
+            service()
+        except Exception as e:
+            import traceback, sys
+
+            traceback.print_exc()  # 打印异常信息
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            error = str(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+            msg_template_details = error
+            print_to_file(do_alarm(msg_template_details))
+
+        time.sleep(2 * 60 * 60)  # 每隔2个小时检查一下上下游数据一致性

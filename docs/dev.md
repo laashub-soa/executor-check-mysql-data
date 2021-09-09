@@ -1,6 +1,7 @@
 ```shell
 pip install PyMySQL
 pip install PyYAML
+pip install requests
 ```
 
 
